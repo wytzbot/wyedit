@@ -8,7 +8,9 @@
     <meta name="description" content="Free, premium, fully offline progressive web app image toolkit. Crop, compress, convert, rotate, watermark, remove backgrounds, and create memes instantly.">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://wyedit.app/">
-    
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff7a00">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
     <meta property="og:type" content="website">
     <meta property="og:title" content="WyEdit - Premium Local Image Editor">
     <meta property="og:description" content="An incredibly fast, secure, and beautiful offline image workspace.">
@@ -1074,6 +1076,9 @@
         }
         
         let app; window.addEventListener('DOMContentLoaded', () => app = new WyEditApp());
+    </script>
+    <script>
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js') }
     </script>
 </body>
 </html>
