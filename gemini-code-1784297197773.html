@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-black text-slate-100 dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <title>WyEdit - Professional Mobile-First PWA Image Toolkit</title>
+    <meta name="description" content="Free, premium, fully offline progressive web app image toolkit. Crop, compress, convert, rotate, watermark, remove backgrounds, and create memes instantly.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://wyedit.app/">
+    
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="WyEdit - Premium Local Image Editor">
+    <meta property="og:description" content="An incredibly fast, secure, and beautiful offline image workspace.">
+    <meta property="og:image" content="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23ff7a00%22/><text y=%2255%22 x=%2215%22 font-family=%22sans-serif%22 font-size=%2250%22 fill=%22%23000%22 font-weight=%22bold%22>Wy</text></svg>">
+    
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { light: '#ff9e00', DEFAULT: '#ff7a00', dark: '#e05300' }
+                    },
+                    backgroundImage: {
+                        'glass-gradient': 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)',
+                        'brand-gradient': 'linear-gradient(135deg, #ff9e00 0%, #ff5100 100%)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .glass { background: rgba(18, 18, 22, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.06); }
+        .glass-card { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .glass-card:hover { border-color: rgba(255, 122, 0, 0.3); background: rgba(255, 255, 255, 0.04); transform: translateY(-2px); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 122, 0, 0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 122, 0, 0.6); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes pulse-glow { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 0.9; transform: scale(1.05); } }
+        .animate-glow { animation: pulse-glow 3s infinite ease-in-out; }
+        .checkboard { background-color: #0f0f11; background-image: linear-gradient(45deg, #18181c 25%, transparent 25%), linear-gradient(-45deg, #18181c 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #18181c 75%), linear-gradient(-45deg, transparent 75%, #18181c 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px; }
+        
+        #ptr-indicator { transition: transform 0.2s ease-out; }
+    </style>
+</head>
+<body class="h-full overflow-hidden flex flex-col select-none relative">
+
+    <!-- Pull-to-Refresh Indicator -->
+    <div id="ptr-indicator" class="absolute top-0 left-0 right-0 h-16 flex items-center justify-center gap-2 bg-brand/10 text-brand font-bold text-sm z-50 -translate-y-full border-b border-brand/20">
+        <i data-lucide="refresh-cw" class="animate-spin w-5 h-5"></i> Refreshing Workspace...
+    </div>
+
+    <!-- Active Toast Alerts container -->
+    <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Global App Layout Wrapper -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- Off-canvas Collapsible Left Drawer -->
+        <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-80 bg-black/95 border-r border-white/5 flex flex-col z-[500] -translate-x-full md:translate-x-0 transition-transform duration-300 ease-out glass">
+            <!-- Sidebar Header -->
+            <div class="h-16 flex items-center justify-between px-6 border-b border-white/5">
+                <div class="flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-lg bg-brand-gradient flex items-center justify-center font-extrabold text-black text-sm">Wy</span>
+                    <span class="text-xl font-bold tracking-tight text-white">WyEdit</span>
+                </div>
+                <button id="btn-close-sidebar" class="md:hidden text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <!-- Navigation Lists -->
+            <nav class="flex-1 overflow-y-auto px-4 py-6 space-y-8 no-scrollbar">
+                <div>
+                    <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-widest px-3 mb-3">Core</h3>
+                    <ul class="space-y-1">
+                        <li><button onclick="app.showPage('home')" class="nav-item active w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white font-medium transition-all duration-200"><i data-lucide="home" class="w-5 h-5"></i> Home</button></li>
+                        <li><button onclick="app.createNewProject()" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white font-medium transition-all duration-200"><i data-lucide="plus-circle" class="w-5 h-5"></i> New Project</button></li>
+                        <li><button onclick="app.showPage('my-projects')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white font-medium transition-all duration-200"><i data-lucide="folder" class="w-5 h-5"></i> My Projects</button></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-widest px-3 mb-3">Support & Settings</h3>
+                    <ul class="space-y-1">
+                        <li><button onclick="app.showModal('faqs')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white font-medium transition-all duration-200"><i data-lucide="help-circle" class="w-5 h-5 text-brand"></i> How to use (FAQs)</button></li>
+                        <li><button onclick="app.showPage('settings')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white font-medium transition-all duration-200"><i data-lucide="settings" class="w-5 h-5"></i> Settings</button></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Sidebar Overlay (Mobile Tap Out) -->
+        <div id="sidebar-backdrop" class="fixed inset-0 z-[400] bg-black/60 hidden transition-opacity duration-300 md:hidden"></div>
+
+        <!-- Central Working Screen Viewports -->
+        <main class="flex-1 flex flex-col overflow-hidden bg-[#0c0c0e]">
+            
+            <header class="h-16 border-b border-white/5 flex items-center justify-between px-4 md:px-8 bg-black/40 z-40 relative">
+                <div class="flex items-center gap-4">
+                    <button id="btn-hamburger" class="p-2 -ml-2 text-slate-400 hover:text-white active:scale-95 transition md:hidden"><i data-lucide="menu" class="w-6 h-6"></i></button>
+                    <h2 id="navbar-view-title" class="text-lg font-bold text-white tracking-tight"></h2>
+                </div>
+            </header>
+
+            <!-- Dynamic Pages Container -->
+            <div class="flex-1 overflow-y-auto relative p-4 md:p-8" id="page-content">
+
+                <!-- 1. HOME SCREEN PAGE -->
+                <section id="page-home" class="space-y-8 max-w-6xl mx-auto">
+                    <!-- Hero Section -->
+                    <div class="relative overflow-hidden rounded-3xl p-8 md:p-12 glass border border-white/5">
+                        <div class="relative z-10 max-w-xl space-y-4">
+                            <span class="px-3 py-1 rounded-full bg-brand/10 text-brand text-xs font-bold uppercase tracking-wider">Browser Native Toolkit</span>
+                            <h1 class="text-3xl md:text-5xl font-black leading-tight text-white">Private Image Operations.</h1>
+                            <p class="text-slate-400 text-sm md:text-base">Fully offline processor. Fast, safe, and stored securely.</p>
+                            <div class="pt-2 flex flex-wrap gap-3">
+                                <label class="cursor-pointer flex items-center gap-2 bg-brand-gradient text-black font-bold px-6 py-3 rounded-xl hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-brand/20">
+                                    <i data-lucide="upload-cloud" class="w-5 h-5"></i><span>Upload Photo</span>
+                                    <input type="file" accept="image/*" class="hidden" onchange="app.handleImageUpload(event)">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                        <div class="relative w-full sm:max-w-md">
+                            <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500"></i>
+                            <input type="text" id="tool-search" placeholder="Search editing tools..." class="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand transition">
+                        </div>
+                    </div>
+
+                    <!-- Tool Grid (Updated to 3 columns) -->
+                    <div id="tools-grid" class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-6"></div>
+
+                    <!-- Recent Projects Carousel -->
+                    <div id="home-recents-section" class="hidden space-y-4 pt-4">
+                        <h3 class="text-xl font-bold text-white flex items-center gap-2"><i data-lucide="clock" class="text-brand"></i> Resume Recent Work</h3>
+                        <div id="home-recents-list" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                    </div>
+                </section>
+
+                <!-- 2. STUDIO / EDITOR SCREEN -->
+                <section id="page-studio" class="hidden h-full flex flex-col lg:flex-row gap-6">
+                    <div class="flex-1 bg-black/30 border border-white/5 rounded-3xl flex flex-col overflow-hidden min-h-[400px]">
+                        <div class="h-14 border-b border-white/5 px-4 bg-black/40 flex items-center justify-between">
+                            <div class="flex items-center gap-1">
+                                <button onclick="app.undo()" title="Undo" class="p-2 text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition" id="btn-undo"><i data-lucide="undo" class="w-5 h-5"></i></button>
+                                <button onclick="app.redo()" title="Redo" class="p-2 text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition" id="btn-redo"><i data-lucide="redo" class="w-5 h-5"></i></button>
+                                <button onclick="app.resetToSource()" title="Reset" class="p-2 text-slate-400 hover:text-red-400 transition"><i data-lucide="refresh-ccw" class="w-5 h-5"></i></button>
+                            </div>
+                            <button onmousedown="app.compareBefore(true)" onmouseup="app.compareBefore(false)" onmouseleave="app.compareBefore(false)" ontouchstart="app.compareBefore(true)" ontouchend="app.compareBefore(false)" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 active:bg-brand/20 transition flex items-center gap-1"><i data-lucide="eye" class="w-4 h-4"></i> Hold to Compare</button>
+                        </div>
+
+                        <div class="flex-1 relative checkboard flex items-center justify-center p-4 min-h-[300px]">
+                            <div id="canvas-container" class="relative max-w-full max-h-[60vh] flex items-center justify-center">
+                                <canvas id="workspace-canvas" class="max-w-full max-h-full object-contain shadow-2xl transition-all duration-100"></canvas>
+                                <div id="crop-overlay-box" class="absolute hidden border-2 border-brand cursor-move shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
+                                    <div class="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 bg-brand rounded-full cursor-nwse-resize"></div>
+                                    <div class="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-brand rounded-full cursor-nesw-resize"></div>
+                                    <div class="absolute -bottom-1.5 -left-1.5 w-3.5 h-3.5 bg-brand rounded-full cursor-nesw-resize"></div>
+                                    <div class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-brand rounded-full cursor-nwse-resize"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="h-10 border-t border-white/5 px-4 bg-black/40 flex items-center justify-between text-xs text-slate-500 font-mono">
+                            <span id="canvas-dimens">Resolution: --</span>
+                            <span id="canvas-aspect">Aspect: --</span>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel Controls -->
+                    <div class="w-full lg:w-96 flex flex-col gap-6 pb-6">
+                        <div class="glass border border-white/5 rounded-3xl p-6 space-y-6">
+                            <div class="flex items-center justify-between border-b border-white/5 pb-4">
+                                <h3 class="font-bold text-white flex items-center gap-2" id="studio-tool-title">Tool Setup</h3>
+                                <button onclick="app.showPage('home')" class="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition"><i data-lucide="corner-up-left" class="w-3.5 h-3.5"></i> Exit</button>
+                            </div>
+
+                            <div id="studio-controls-container" class="space-y-5"></div>
+
+                            <div class="pt-4 border-t border-white/5">
+                                <button onclick="app.applyCurrentToolChanges()" class="w-full py-3 px-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-brand font-bold text-sm shadow-md transition-all">
+                                    Apply Tool Modifications
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- EXPORT & SAVE SECTION (Updated Logic) -->
+                        <div class="glass border border-white/5 rounded-3xl p-6 space-y-4">
+                            <h4 class="font-bold text-white flex items-center gap-2 border-b border-white/5 pb-3"><i data-lucide="download" class="w-5 h-5 text-brand"></i> Final Output</h4>
+                            
+                            <label class="flex items-center gap-3 cursor-pointer select-none">
+                                <div class="relative">
+                                    <input type="checkbox" id="toggle-save-project" class="sr-only peer" checked>
+                                    <div class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand"></div>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-semibold text-slate-200">Store in My Projects</span>
+                                    <span class="text-[10px] text-slate-500">Save workspace locally alongside download</span>
+                                </div>
+                            </label>
+
+                            <button onclick="app.triggerDownload()" class="w-full py-3.5 px-4 rounded-xl bg-brand-gradient text-black font-extrabold text-sm shadow-lg shadow-brand/10 hover:shadow-brand/20 hover:scale-[1.01] transition-all flex items-center justify-center gap-2">
+                                Export & Download
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. MY PROJECTS PAGE -->
+                <section id="page-my-projects" class="hidden space-y-6 max-w-6xl mx-auto">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-3xl font-extrabold text-white">My Projects</h2>
+                            <p class="text-slate-400 text-sm">Your secure workspace. Resumable history is preserved.</p>
+                        </div>
+                        <button onclick="app.clearAllProjects()" class="px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold transition-all">Purge All</button>
+                    </div>
+                    <div id="projects-empty-state" class="hidden flex flex-col items-center justify-center p-16 border border-dashed border-white/10 rounded-3xl">
+                        <i data-lucide="folder-open" class="w-12 h-12 text-slate-600 mb-4"></i>
+                        <p class="text-slate-400">No projects saved yet.</p>
+                    </div>
+                    <div id="projects-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+                </section>
+
+                <!-- 4. SETTINGS PAGE -->
+                <section id="page-settings" class="hidden max-w-3xl mx-auto">
+                    <h2 class="text-3xl font-extrabold text-white mb-6">Settings</h2>
+                    <div class="glass p-6 rounded-3xl space-y-6">
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between"><label class="text-sm font-bold text-white">Default Export Quality</label><span id="lbl-settings-quality" class="text-brand">85%</span></div>
+                            <input type="range" id="settings-quality" min="10" max="100" value="85" class="w-full accent-brand" oninput="app.updateSettings('defaultQuality', this.value); document.getElementById('lbl-settings-quality').textContent = this.value + '%'">
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals Overlay -->
+    <div id="modal-backdrop" class="fixed inset-0 z-[9900] bg-black/80 hidden items-center justify-center p-4">
+        <div class="w-full max-w-lg bg-[#0e0e11] border border-white/10 rounded-3xl p-6 flex flex-col max-h-[85vh] overflow-hidden glass">
+            <div class="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+                <h3 id="modal-title" class="text-lg font-bold text-white">Dialog</h3>
+                <button onclick="app.closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="modal-body" class="flex-1 overflow-y-auto text-sm text-slate-300 space-y-4 pr-2"></div>
+            <div class="pt-4 border-t border-white/5 mt-4 flex justify-end">
+                <button onclick="app.closeModal()" class="bg-brand text-black font-bold px-6 py-2 rounded-xl text-xs hover:scale-105 transition-all">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class WyEditApp {
+            constructor() {
+                this.db = null;
+                this.activePage = 'home';
+                this.sourceImage = null; 
+                this.history = [];      
+                this.historyIndex = -1; 
+                this.activeToolId = null;
+                this.projectName = "Untitled Workspace";
+                this.projectStoreId = null;
+
+                this.cropData = { x: 50, y: 50, w: 200, h: 200, ratio: null, isCircle: false };
+                this.cropDrag = { active: false, startX: 0, startY: 0, initialX: 0, initialY: 0, mode: 'move' };
+
+                this.memeBoxes = [
+                    { id: 1, text: "TOP TEXT", size: 36, color: "#ffffff", stroke: "#000000", x: 50, y: 15 },
+                    { id: 2, text: "BOTTOM TEXT", size: 36, color: "#ffffff", stroke: "#000000", x: 50, y: 85 }
+                ];
+                this.activeMemeBoxId = 1;
+
+                this.settings = { defaultQuality: 85 };
+
+                // 14 Tools Total (8 Old + 6 New)
+                this.tools = [
+                    { id: 'compress', name: 'Compressor', desc: 'Reduce filesizes', icon: 'zap', category: 'core' },
+                    { id: 'resize', name: 'Resizer', desc: 'Change dimensions', icon: 'maximize-2', category: 'core' },
+                    { id: 'crop', name: 'Precision Crop', desc: 'Trim pixels', icon: 'crop', category: 'core' },
+                    { id: 'padder', name: 'Canvas Padder', desc: 'Add aspect borders', icon: 'square', category: 'core' },
+                    { id: 'rotate', name: 'Rotate & Flip', desc: 'Alter orientation', icon: 'rotate-cw', category: 'core' },
+                    { id: 'convert', name: 'Format Converter', desc: 'Transform type', icon: 'file-type', category: 'core' },
+                    
+                    { id: 'brightness', name: 'Light & Contrast', desc: 'Fix dark photos', icon: 'sun', category: 'creative' },
+                    { id: 'saturate', name: 'Color Booster', desc: 'Vibrant saturation', icon: 'droplet', category: 'creative' },
+                    { id: 'filters', name: 'Vintage Filters', desc: 'B&W, Sepia, etc.', icon: 'camera', category: 'creative' },
+                    { id: 'blur', name: 'Lens Blur', desc: 'Soften backgrounds', icon: 'eye-off', category: 'creative' },
+                    { id: 'border', name: 'Solid Border', desc: 'Frame your image', icon: 'frame', category: 'creative' },
+                    
+                    { id: 'watermark', name: 'Watermark', desc: 'Embed text overlay', icon: 'shield-alert', category: 'creative' },
+                    { id: 'bgremove', name: 'Luma Eraser', desc: 'Remove backgrounds', icon: 'scissors', category: 'creative' },
+                    { id: 'meme', name: 'Meme Engine', desc: 'Impact font text', icon: 'type', category: 'creative' }
+                ];
+
+                this.init();
+            }
+
+            async init() {
+                try {
+                    this.initDOM();
+                    await this.initDatabase();
+                    this.renderToolCards();
+                    this.bindGlobalEvents();
+                    
+                    // Setup clean standard history router tracking views
+                    history.replaceState({ pageId: 'home' }, "");
+                    this.showPage('home', false);
+                    lucide.createIcons();
+                } catch (err) {
+                    console.error("Initialization anomaly caught:", err);
+                }
+            }
+
+            initDatabase() {
+                return new Promise((resolve) => {
+                    try {
+                        const request = indexedDB.open('WyEditDB2', 1);
+                        request.onupgradeneeded = (e) => {
+                            const db = e.target.result;
+                            if (!db.objectStoreNames.contains('projects')) {
+                                db.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
+                            }
+                        };
+                        request.onsuccess = (e) => {
+                            this.db = e.target.result;
+                            this.refreshRecentProjects();
+                            resolve();
+                        };
+                        request.onerror = () => {
+                            this.showToast("Local sandbox database unreachable.", "warning");
+                            resolve();
+                        };
+                    } catch (e) {
+                        resolve();
+                    }
+                });
+            }
+
+            initDOM() {
+                this.dom = {
+                    sidebar: document.getElementById('sidebar'),
+                    sidebarBackdrop: document.getElementById('sidebar-backdrop'),
+                    btnHamburger: document.getElementById('btn-hamburger'),
+                    btnCloseSidebar: document.getElementById('btn-close-sidebar'),
+                    viewTitle: document.getElementById('navbar-view-title'),
+                    toolsGrid: document.getElementById('tools-grid'),
+                    canvas: document.getElementById('workspace-canvas'),
+                    canvasDimens: document.getElementById('canvas-dimens'),
+                    canvasAspect: document.getElementById('canvas-aspect'),
+                    studioControls: document.getElementById('studio-controls-container'),
+                    studioToolTitle: document.getElementById('studio-tool-title'),
+                    cropOverlayBox: document.getElementById('crop-overlay-box')
+                };
+                this.ctx = this.dom.canvas.getContext('2d', { willReadFrequently: true });
+            }
+
+            bindGlobalEvents() {
+                this.dom.btnHamburger.addEventListener('click', () => this.toggleSidebar(true));
+                this.dom.btnCloseSidebar.addEventListener('click', () => this.toggleSidebar(false));
+                this.dom.sidebarBackdrop.addEventListener('click', () => this.toggleSidebar(false));
+                
+                // Content interaction handles closing drawer safely
+                const contentArea = document.getElementById('page-content');
+                contentArea.addEventListener('click', (e) => {
+                    if(!e.target.closest('#btn-hamburger')) this.toggleSidebar(false);
+                });
+                contentArea.addEventListener('touchstart', () => this.toggleSidebar(false), {passive: true});
+
+                document.getElementById('tool-search').addEventListener('input', (e) => this.filterSearch(e.target.value));
+
+                // Process internal routing changes instead of exiting webview instance
+                window.addEventListener('popstate', (e) => {
+                    if (e.state && e.state.pageId) {
+                        this.showPage(e.state.pageId, false);
+                    } else {
+                        this.showPage('home', false);
+                    }
+                });
+
+                // Pull to refresh logic
+                let startY = 0;
+                let isPulling = false;
+                const ptrIndicator = document.getElementById('ptr-indicator');
+
+                contentArea.addEventListener('touchstart', (e) => {
+                    if (contentArea.scrollTop === 0) {
+                        startY = e.touches[0].clientY;
+                        isPulling = true;
+                    }
+                }, {passive: true});
+
+                contentArea.addEventListener('touchmove', (e) => {
+                    if (!isPulling) return;
+                    const y = e.touches[0].clientY;
+                    if (y - startY > 60) {
+                        ptrIndicator.style.transform = `translateY(0%)`;
+                    }
+                }, {passive: true});
+
+                contentArea.addEventListener('touchend', (e) => {
+                    if (!isPulling) return;
+                    const endY = e.changedTouches[0].clientY;
+                    if (endY - startY > 100 && contentArea.scrollTop === 0) {
+                        location.reload();
+                    } else {
+                        ptrIndicator.style.transform = `translateY(-100%)`;
+                    }
+                    isPulling = false;
+                    startY = 0;
+                }, {passive: true});
+
+                // Cropper bindings
+                this.dom.cropOverlayBox.addEventListener('mousedown', (e) => this.initCropDrag(e, false));
+                window.addEventListener('mousemove', (e) => this.processCropDrag(e, false));
+                window.addEventListener('mouseup', () => this.cropDrag.active = false);
+
+                this.dom.cropOverlayBox.addEventListener('touchstart', (e) => this.initCropDrag(e, true), { passive: false });
+                window.addEventListener('touchmove', (e) => this.processCropDrag(e, true), { passive: false });
+                window.addEventListener('touchend', () => this.cropDrag.active = false);
+            }
+
+            toggleSidebar(show) {
+                if (show) {
+                    this.dom.sidebar.classList.remove('-translate-x-full');
+                    this.dom.sidebarBackdrop.classList.remove('hidden');
+                } else {
+                    this.dom.sidebar.classList.add('-translate-x-full');
+                    this.dom.sidebarBackdrop.classList.add('hidden');
+                }
+            }
+
+            showToast(msg, type = "info") {
+                const container = document.getElementById('toast-container');
+                if(!container) return;
+                const t = document.createElement('div');
+                t.className = `p-4 rounded-2xl shadow-xl flex items-center gap-3 glass text-sm font-bold transition-all translate-y-2 opacity-0 z-[9999]`;
+                t.innerHTML = `<span class="text-white">${msg}</span>`;
+                container.appendChild(t);
+                setTimeout(() => t.classList.remove('translate-y-2', 'opacity-0'), 50);
+                setTimeout(() => {
+                    t.classList.add('opacity-0', '-translate-y-2');
+                    setTimeout(() => t.remove(), 300);
+                }, 3000);
+            }
+
+            showPage(pageId, pushState = true) {
+                this.activePage = pageId;
+                
+                if (pushState) {
+                    history.pushState({ pageId: pageId }, "");
+                }
+
+                document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+                const targetSection = document.getElementById('page-' + pageId);
+                if(targetSection) targetSection.classList.remove('hidden');
+
+                if (pageId === 'home') {
+                    this.dom.viewTitle.textContent = "WyEdit Dashboard";
+                    this.refreshRecentProjects();
+                } else if (pageId === 'studio') {
+                    this.dom.viewTitle.textContent = "Studio Workspace";
+                } else if (pageId === 'my-projects') {
+                    this.dom.viewTitle.textContent = "My Projects Gallery";
+                    this.renderAllProjects();
+                } else if (pageId === 'settings') {
+                    this.dom.viewTitle.textContent = "Settings";
+                }
+                this.toggleSidebar(false);
+            }
+
+            renderToolCards() {
+                this.dom.toolsGrid.innerHTML = '';
+                this.tools.forEach(t => {
+                    const el = document.createElement('div');
+                    el.className = "tool-card glass-card p-5 rounded-3xl flex flex-col justify-between h-40 cursor-pointer relative overflow-hidden group";
+                    el.onclick = () => this.selectToolForProject(t.id);
+                    el.innerHTML = `
+                        <div class="w-10 h-10 rounded-2xl bg-brand/10 flex items-center justify-center text-brand mb-2"><i data-lucide="${t.icon}"></i></div>
+                        <div><h4 class="font-bold text-white text-md">${t.name}</h4><p class="text-xs text-slate-400 mt-1">${t.desc}</p></div>
+                    `;
+                    this.dom.toolsGrid.appendChild(el);
+                });
+            }
+
+            filterSearch(q) {
+                q = q.toLowerCase();
+                document.querySelectorAll('.tool-card').forEach(card => {
+                    card.classList.toggle('hidden', !card.textContent.toLowerCase().includes(q));
+                });
+            }
+
+            selectToolForProject(toolId) {
+                this.activeToolId = toolId;
+                if (!this.sourceImage) {
+                    const input = document.createElement('input');
+                    input.type = 'file'; input.accept = 'image/*';
+                    input.onchange = (e) => this.handleImageUpload(e);
+                    input.click();
+                } else {
+                    this.setupStudioControls(toolId);
+                    this.showPage('studio');
+                    this.drawActiveHistoryState();
+                }
+            }
+
+            createNewProject() {
+                this.sourceImage = null; this.history = []; this.historyIndex = -1; this.projectStoreId = null;
+                this.projectName = "Project_" + Math.floor(1000 + Math.random() * 9000);
+                const input = document.createElement('input');
+                input.type = 'file'; input.accept = 'image/*';
+                input.onchange = (e) => { 
+                    if(e.target.files[0]) this.projectName = e.target.files[0].name.split('.')[0]; 
+                    this.handleImageUpload(e); 
+                };
+                input.click();
+            }
+
+            handleImageUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const r = new FileReader();
+                r.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.sourceImage = img;
+                        this.history = [e.target.result];
+                        this.historyIndex = 0;
+                        if (!this.activeToolId) this.activeToolId = 'compress';
+                        this.setupStudioControls(this.activeToolId);
+                        this.showPage('studio');
+                        this.drawActiveHistoryState();
+                    };
+                    img.src = e.target.result;
+                };
+                r.readAsDataURL(file);
+            }
+
+            setupStudioControls(toolId) {
+                const container = this.dom.studioControls;
+                container.innerHTML = '';
+                this.dom.cropOverlayBox.classList.add('hidden');
+                
+                const tool = this.tools.find(t => t.id === toolId);
+                this.dom.studioToolTitle.innerHTML = `<i data-lucide="${tool.icon}" class="w-5 h-5"></i> ${tool.name}`;
+
+                switch(toolId) {
+                    case 'compress':
+                        container.innerHTML = `<select id="ctrl-compress-format" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none"><option value="image/jpeg">JPEG Optimized</option><option value="image/webp">WEBP High Perf</option></select><input type="range" id="ctrl-compress-quality" min="10" max="100" value="85" class="w-full mt-4 accent-brand">`;
+                        break;
+                    case 'resize':
+                        container.innerHTML = `<div class="grid grid-cols-2 gap-2"><input type="number" id="resize-w" class="bg-white/5 rounded-xl px-3 py-2 text-sm" placeholder="W"><input type="number" id="resize-h" class="bg-white/5 rounded-xl px-3 py-2 text-sm" placeholder="H"></div><div class="mt-2"><input type="checkbox" id="resize-aspect" checked> Keep Aspect Ratio</div>`;
+                        this.initResizeFieldDefaults();
+                        break;
+                    case 'crop':
+                        container.innerHTML = `<div class="grid grid-cols-3 gap-2"><button onclick="app.setCropRatio(null, false)" class="py-2 text-xs bg-brand text-black rounded-lg">Free</button><button onclick="app.setCropRatio(1, false)" class="py-2 text-xs bg-white/5 rounded-lg text-white">1:1</button><button onclick="app.setCropRatio(16/9, false)" class="py-2 text-xs bg-white/5 rounded-lg text-white">16:9</button></div>`;
+                        this.setupInteractiveCropper();
+                        break;
+                    case 'padder':
+                        container.innerHTML = `<select id="pad-aspect" class="w-full bg-white/5 rounded-xl px-4 py-3 text-sm" onchange="app.drawActiveHistoryState()"><option value="1">1:1 Square</option><option value="1.77">16:9 Landscape</option><option value="0.8">4:5 Instagram</option></select>`;
+                        break;
+                    case 'rotate':
+                        container.innerHTML = `<div class="grid grid-cols-2 gap-2"><button onclick="app.applyRotateTransform(90)" class="bg-white/5 py-2 rounded-lg text-white">Rotate 90°</button><button onclick="app.applyFlipTransform('h')" class="bg-white/5 py-2 rounded-lg text-white">Flip Horiz</button></div>`;
+                        break;
+                    case 'convert':
+                        container.innerHTML = `<select id="ctrl-convert-mime" class="w-full bg-white/5 rounded-xl px-4 py-3 text-sm"><option value="image/png">PNG</option><option value="image/jpeg">JPEG</option><option value="image/webp">WEBP</option></select>`;
+                        break;
+                    case 'brightness':
+                        container.innerHTML = `
+                            <label class="text-xs text-slate-400">Brightness</label><input type="range" id="val-bright" min="0" max="200" value="100" class="w-full mb-3 accent-brand" oninput="app.drawActiveHistoryState()">
+                            <label class="text-xs text-slate-400">Contrast</label><input type="range" id="val-contrast" min="0" max="200" value="100" class="w-full accent-brand" oninput="app.drawActiveHistoryState()">`;
+                        break;
+                    case 'saturate':
+                        container.innerHTML = `<label class="text-xs text-slate-400">Color Saturation</label><input type="range" id="val-saturate" min="0" max="300" value="100" class="w-full accent-brand" oninput="app.drawActiveHistoryState()">`;
+                        break;
+                    case 'filters':
+                        container.innerHTML = `<select id="val-filter" class="w-full bg-white/5 rounded-xl px-4 py-3 text-sm" onchange="app.drawActiveHistoryState()"><option value="none">None</option><option value="grayscale">Grayscale</option><option value="sepia">Sepia Vintage</option><option value="invert">Invert Colors</option></select>`;
+                        break;
+                    case 'blur':
+                        container.innerHTML = `<label class="text-xs text-slate-400">Gaussian Blur (px)</label><input type="range" id="val-blur" min="0" max="20" value="0" class="w-full accent-brand" oninput="app.drawActiveHistoryState()">`;
+                        break;
+                    case 'border':
+                        container.innerHTML = `
+                            <label class="text-xs text-slate-400">Border Width</label><input type="range" id="val-borderwidth" min="0" max="100" value="0" class="w-full mb-3 accent-brand" oninput="app.drawActiveHistoryState()">
+                            <label class="text-xs text-slate-400">Border Color</label><input type="color" id="val-bordercolor" value="#ffffff" class="w-full h-10 border-0 bg-transparent cursor-pointer" oninput="app.drawActiveHistoryState()">`;
+                        break;
+                    case 'watermark':
+                        container.innerHTML = `<input type="text" id="watermark-txt" value="© WyEdit" class="w-full bg-white/5 rounded-xl px-4 py-3 mb-2 text-sm text-white" oninput="app.drawActiveHistoryState()"><input type="color" id="watermark-color" value="#ffffff" class="w-full h-10 bg-transparent" oninput="app.drawActiveHistoryState()"><input type="range" id="watermark-opacity" min="0" max="1" step="0.1" value="0.8" class="w-full mt-2 accent-brand" oninput="app.drawActiveHistoryState()">`;
+                        break;
+                    case 'bgremove':
+                        container.innerHTML = `<label class="text-xs text-slate-400">Chroma Tolerance</label><input type="range" id="bg-tolerance" min="0" max="100" value="15" class="w-full accent-brand" oninput="app.drawActiveHistoryState()">`;
+                        break;
+                    case 'meme':
+                        container.innerHTML = `<textarea id="meme-text-input" class="w-full bg-white/5 rounded-xl px-4 py-3 text-sm text-white" oninput="app.updateMemeTextState(this.value)">TOP TEXT</textarea>`;
+                        break;
+                }
+                lucide.createIcons();
+            }
+
+            undo() { if (this.historyIndex > 0) { this.historyIndex--; this.drawActiveHistoryState(); this.syncHistoryButtons(); } }
+            redo() { if (this.historyIndex < this.history.length - 1) { this.historyIndex++; this.drawActiveHistoryState(); this.syncHistoryButtons(); } }
+            
+            pushToHistory(base64) {
+                try {
+                    this.history = this.history.slice(0, this.historyIndex + 1);
+                    this.history.push(base64);
+                    
+                    // Restrict undo history stack limit to 20 to prevent Webkit memory overflow
+                    if (this.history.length > 20) {
+                        this.history.shift();
+                    }
+                    this.historyIndex = this.history.length - 1;
+                    this.syncHistoryButtons();
+                } catch(e) {
+                    console.error(e);
+                }
+            }
+
+            syncHistoryButtons() {
+                const uBtn = document.getElementById('btn-undo');
+                const rBtn = document.getElementById('btn-redo');
+                if(uBtn) uBtn.disabled = (this.historyIndex <= 0);
+                if(rBtn) rBtn.disabled = (this.historyIndex >= this.history.length - 1);
+            }
+
+            resetToSource() {
+                if (this.history.length > 0) {
+                    this.historyIndex = 0;
+                    this.history = [this.history[0]];
+                    this.drawActiveHistoryState();
+                    this.syncHistoryButtons();
+                }
+            }
+
+            drawActiveHistoryState(tempBase64 = null) {
+                const srcState = tempBase64 || this.history[this.historyIndex];
+                if (!srcState) return;
+
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = this.dom.canvas;
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    
+                    if (this.activePage === 'studio' && this.activeToolId === 'padder') {
+                        const targetAspect = parseFloat(document.getElementById('pad-aspect')?.value || 1);
+                        let newW = canvas.width, newH = canvas.height;
+                        const imgAspect = canvas.width / canvas.height;
+                        if (imgAspect > targetAspect) { newH = canvas.width / targetAspect; } 
+                        else { newW = canvas.height * targetAspect; }
+                        canvas.width = newW; canvas.height = newH;
+                        
+                        this.ctx.filter = 'blur(20px) brightness(40%)';
+                        this.ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        this.ctx.filter = 'none';
+                        const dx = (canvas.width - img.naturalWidth) / 2;
+                        const dy = (canvas.height - img.naturalHeight) / 2;
+                        this.ctx.drawImage(img, dx, dy);
+                    } else {
+                        let f = 'none';
+                        if (this.activePage === 'studio') {
+                            if (this.activeToolId === 'brightness') {
+                                const b = document.getElementById('val-bright')?.value || 100;
+                                const c = document.getElementById('val-contrast')?.value || 100;
+                                f = `brightness(${b}%) contrast(${c}%)`;
+                            } else if (this.activeToolId === 'saturate') {
+                                f = `saturate(${document.getElementById('val-saturate')?.value || 100}%)`;
+                            } else if (this.activeToolId === 'blur') {
+                                f = `blur(${document.getElementById('val-blur')?.value || 0}px)`;
+                            } else if (this.activeToolId === 'filters') {
+                                const t = document.getElementById('val-filter')?.value || 'none';
+                                if (t === 'sepia') f = 'sepia(100%)';
+                                if (t === 'grayscale') f = 'grayscale(100%)';
+                                if (t === 'invert') f = 'invert(100%)';
+                            }
+                        }
+                        
+                        this.ctx.filter = f;
+                        this.ctx.drawImage(img, 0, 0);
+                        this.ctx.filter = 'none';
+
+                        if (this.activePage === 'studio' && this.activeToolId === 'border') {
+                            const bw = parseInt(document.getElementById('val-borderwidth')?.value || 0);
+                            const bc = document.getElementById('val-bordercolor')?.value || '#ffffff';
+                            if (bw > 0) {
+                                this.ctx.lineWidth = bw * 2;
+                                this.ctx.strokeStyle = bc;
+                                this.ctx.strokeRect(0, 0, canvas.width, canvas.height);
+                            }
+                        }
+                    }
+
+                    this.drawOverlayArtifacts();
+
+                    this.dom.canvasDimens.textContent = `${canvas.width} x ${canvas.height} px`;
+                    this.dom.canvasAspect.textContent = `Aspect: ${(canvas.width / canvas.height).toFixed(2)}`;
+                };
+                img.src = srcState;
+            }
+
+            drawOverlayArtifacts() {
+                if (this.activePage !== 'studio') return;
+
+                if (this.activeToolId === 'watermark') {
+                    const txt = document.getElementById('watermark-txt')?.value || '';
+                    const color = document.getElementById('watermark-color')?.value || '#ffffff';
+                    const opacity = parseFloat(document.getElementById('watermark-opacity')?.value || 1);
+                    this.ctx.save();
+                    this.ctx.globalAlpha = opacity;
+                    this.ctx.font = `bold 48px sans-serif`;
+                    this.ctx.fillStyle = color;
+                    this.ctx.fillText(txt, 20, this.dom.canvas.height - 30);
+                    this.ctx.restore();
+                }
+
+                if (this.activeToolId === 'bgremove') {
+                    const tol = parseInt(document.getElementById('bg-tolerance')?.value || 15);
+                    const imgData = this.ctx.getImageData(0, 0, this.dom.canvas.width, this.dom.canvas.height);
+                    const d = imgData.data;
+                    const rRef = d[0], gRef = d[1], bRef = d[2];
+                    const thresh = tol * 2.55;
+                    for (let i = 0; i < d.length; i += 4) {
+                        const diff = Math.sqrt(Math.pow(d[i]-rRef,2) + Math.pow(d[i+1]-gRef,2) + Math.pow(d[i+2]-bRef,2));
+                        if (diff < thresh) d[i+3] = 0;
+                    }
+                    this.ctx.putImageData(imgData, 0, 0);
+                }
+
+                if (this.activeToolId === 'meme') {
+                    this.ctx.save();
+                    this.ctx.font = `bold 40px Impact`;
+                    this.ctx.fillStyle = "#ffffff";
+                    this.ctx.strokeStyle = "#000000";
+                    this.ctx.lineWidth = 4;
+                    this.ctx.textAlign = 'center';
+                    const txt = document.getElementById('meme-text-input')?.value || '';
+                    this.ctx.strokeText(txt, this.dom.canvas.width/2, this.dom.canvas.height * 0.15);
+                    this.ctx.fillText(txt, this.dom.canvas.width/2, this.dom.canvas.height * 0.15);
+                    this.ctx.restore();
+                }
+            }
+
+            compareBefore(active) { active ? this.drawActiveHistoryState(this.history[0]) : this.drawActiveHistoryState(); }
+
+            applyCurrentToolChanges() {
+                if (this.activeToolId === 'crop') { this.commitCropOperation(); return; }
+                const data = this.dom.canvas.toDataURL('image/png');
+                this.pushToHistory(data);
+                this.showToast("Changes applied.", "success");
+            }
+
+            setupInteractiveCropper() {
+                this.dom.cropOverlayBox.classList.remove('hidden');
+                const b = this.dom.canvas.getBoundingClientRect();
+                this.dom.cropOverlayBox.style.width = `${b.width * 0.8}px`;
+                this.dom.cropOverlayBox.style.height = `${b.height * 0.8}px`;
+                this.dom.cropOverlayBox.style.left = `${this.dom.canvas.offsetLeft + b.width*0.1}px`;
+                this.dom.cropOverlayBox.style.top = `${this.dom.canvas.offsetTop + b.height*0.1}px`;
+                this.syncOverlayBoxData();
+            }
+
+            setCropRatio(val, circle) {
+                this.cropData.ratio = val; this.cropData.isCircle = circle;
+                if (circle) this.dom.cropOverlayBox.classList.add('rounded-full');
+                else this.dom.cropOverlayBox.classList.remove('rounded-full');
+                if (val) {
+                    const w = this.dom.cropOverlayBox.offsetWidth;
+                    this.dom.cropOverlayBox.style.height = `${w / val}px`;
+                }
+                this.syncOverlayBoxData();
+            }
+
+            initCropDrag(e, isTouch) {
+                e.preventDefault(); const t = isTouch ? e.touches[0] : e;
+                this.cropDrag.active = true; this.cropDrag.startX = t.clientX; this.cropDrag.startY = t.clientY;
+                this.cropDrag.initialX = this.dom.cropOverlayBox.offsetLeft;
+                this.cropDrag.initialY = this.dom.cropOverlayBox.offsetTop;
+                this.cropDrag.initialW = this.dom.cropOverlayBox.offsetWidth;
+                this.cropDrag.initialH = this.dom.cropOverlayBox.offsetHeight;
+                
+                const b = this.dom.cropOverlayBox.getBoundingClientRect();
+                if (Math.abs(t.clientX - b.right) < 20 && Math.abs(t.clientY - b.bottom) < 20) this.cropDrag.mode = 'resize';
+                else this.cropDrag.mode = 'move';
+            }
+
+            processCropDrag(e, isTouch) {
+                if (!this.cropDrag.active) return;
+                e.preventDefault(); const t = isTouch ? e.touches[0] : e;
+                const dX = t.clientX - this.cropDrag.startX; const dY = t.clientY - this.cropDrag.startY;
+                if (this.cropDrag.mode === 'move') {
+                    this.dom.cropOverlayBox.style.left = `${this.cropDrag.initialX + dX}px`;
+                    this.dom.cropOverlayBox.style.top = `${this.cropDrag.initialY + dY}px`;
+                } else {
+                    let w = this.cropDrag.initialW + dX; let h = this.cropDrag.initialH + dY;
+                    if (this.cropData.ratio) h = w / this.cropData.ratio;
+                    this.dom.cropOverlayBox.style.width = `${w}px`;
+                    this.dom.cropOverlayBox.style.height = `${h}px`;
+                }
+                this.syncOverlayBoxData();
+            }
+
+            syncOverlayBoxData() {
+                const cr = this.dom.canvas.getBoundingClientRect();
+                const fX = this.dom.canvas.width / cr.width; const fY = this.dom.canvas.height / cr.height;
+                this.cropData.x = (this.dom.cropOverlayBox.offsetLeft - this.dom.canvas.offsetLeft) * fX;
+                this.cropData.y = (this.dom.cropOverlayBox.offsetTop - this.dom.canvas.offsetTop) * fY;
+                this.cropData.w = this.dom.cropOverlayBox.offsetWidth * fX;
+                this.cropData.h = this.dom.cropOverlayBox.offsetHeight * fY;
+            }
+
+            commitCropOperation() {
+                const tc = document.createElement('canvas');
+                tc.width = this.cropData.w; tc.height = this.cropData.h;
+                const tx = tc.getContext('2d');
+                tx.drawImage(this.dom.canvas, this.cropData.x, this.cropData.y, this.cropData.w, this.cropData.h, 0, 0, tc.width, tc.height);
+                this.pushToHistory(tc.toDataURL('image/png'));
+                this.drawActiveHistoryState();
+                this.dom.cropOverlayBox.classList.add('hidden');
+            }
+
+            applyRotateTransform(deg) {
+                const tc = document.createElement('canvas');
+                tc.width = this.dom.canvas.height; tc.height = this.dom.canvas.width;
+                const tx = tc.getContext('2d');
+                tx.translate(tc.width/2, tc.height/2); tx.rotate(deg * Math.PI/180);
+                tx.drawImage(this.dom.canvas, -this.dom.canvas.width/2, -this.dom.canvas.height/2);
+                this.pushToHistory(tc.toDataURL('image/png')); this.drawActiveHistoryState();
+            }
+
+            applyFlipTransform(dir) {
+                const tc = document.createElement('canvas'); tc.width = this.dom.canvas.width; tc.height = this.dom.canvas.height;
+                const tx = tc.getContext('2d');
+                if (dir === 'h') { tx.translate(tc.width, 0); tx.scale(-1, 1); } 
+                else { tx.translate(0, tc.height); tx.scale(1, -1); }
+                tx.drawImage(this.dom.canvas, 0, 0);
+                this.pushToHistory(tc.toDataURL('image/png')); this.drawActiveHistoryState();
+            }
+
+            updateMemeTextState(t) { this.drawActiveHistoryState(); }
+            
+            initResizeFieldDefaults() {
+                const rw = document.getElementById('resize-w'); const rh = document.getElementById('resize-h');
+                if(!rw) return;
+                rw.value = this.dom.canvas.width; rh.value = this.dom.canvas.height;
+                const ratio = rw.value / rh.value;
+                rw.oninput = (e) => { if(document.getElementById('resize-aspect').checked) rh.value = Math.round(e.target.value / ratio); };
+                rh.oninput = (e) => { if(document.getElementById('resize-aspect').checked) rw.value = Math.round(e.target.value * ratio); };
+            }
+
+            async refreshRecentProjects() {
+                if (!this.db) return;
+                try {
+                    const req = this.db.transaction('projects', 'readonly').objectStore('projects').getAll();
+                    req.onsuccess = () => {
+                        const prjs = req.result.sort((a, b) => new Date(b.date) - new Date(a.date));
+                        const section = document.getElementById('home-recents-section');
+                        const list = document.getElementById('home-recents-list');
+                        if (prjs.length > 0) {
+                            section.classList.remove('hidden'); list.innerHTML = '';
+                            prjs.slice(0, 4).forEach(p => {
+                                const c = document.createElement('div');
+                                c.className = "glass p-2 rounded-2xl cursor-pointer hover:border-brand/40 border border-white/5";
+                                c.onclick = () => this.resumeProject(p.id);
+                                c.innerHTML = `<img src="${p.thumbnail}" class="w-full h-24 object-cover rounded-xl bg-slate-900"/><div class="text-xs truncate font-bold mt-1 px-1">${p.name}</div>`;
+                                list.appendChild(c);
+                            });
+                        } else section.classList.add('hidden');
+                    };
+                } catch(e){}
+            }
+
+            renderAllProjects() {
+                if (!this.db) return;
+                try {
+                    const req = this.db.transaction('projects', 'readonly').objectStore('projects').getAll();
+                    req.onsuccess = () => {
+                        const prjs = req.result;
+                        const grid = document.getElementById('projects-grid');
+                        const empty = document.getElementById('projects-empty-state');
+                        if (prjs.length === 0) { grid.classList.add('hidden'); empty.classList.remove('hidden'); }
+                        else {
+                            grid.classList.remove('hidden'); empty.classList.add('hidden'); grid.innerHTML = '';
+                            prjs.forEach(p => {
+                                const i = document.createElement('div');
+                                i.className = "glass p-3 rounded-3xl border border-white/5 flex flex-col space-y-2 hover:border-brand/40";
+                                i.innerHTML = `
+                                    <div class="relative group aspect-square rounded-2xl overflow-hidden bg-black">
+                                        <img src="${p.thumbnail}" class="w-full h-full object-cover"/>
+                                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition">
+                                            <button onclick="app.resumeProject(${p.id})" class="p-2 bg-brand text-black rounded-full"><i data-lucide="play" class="w-4 h-4"></i></button>
+                                            <button onclick="app.deleteProject(${p.id})" class="p-2 bg-red-500 text-white rounded-full"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                        </div>
+                                    </div>
+                                    <div><h4 class="font-bold text-sm truncate">${p.name}</h4><p class="text-[10px] text-slate-500">${new Date(p.date).toLocaleDateString()}</p></div>
+                                `;
+                                grid.appendChild(i);
+                            });
+                            lucide.createIcons();
+                        }
+                    };
+                } catch(e){}
+            }
+
+            resumeProject(id) {
+                if (!this.db) return;
+                try {
+                    this.db.transaction('projects', 'readonly').objectStore('projects').get(id).onsuccess = (e) => {
+                        const p = e.target.result;
+                        if (p) {
+                            const img = new Image();
+                            img.onload = () => {
+                                this.sourceImage = img; 
+                                this.projectName = p.name; 
+                                this.projectStoreId = p.id;
+                                this.history = p.history && p.history.length > 0 ? [...p.history] : [p.thumbnail]; 
+                                this.historyIndex = p.historyIndex !== undefined ? p.historyIndex : this.history.length - 1;
+                                this.setupStudioControls('compress'); 
+                                this.showPage('studio');
+                                this.drawActiveHistoryState(); 
+                                this.syncHistoryButtons();
+                                this.showToast("Project restored with complete history stack.", "success");
+                            };
+                            img.src = p.thumbnail;
+                        }
+                    };
+                } catch(err) {
+                    this.showToast("Error reading project history.", "error");
+                }
+            }
+
+            deleteProject(id) {
+                event.stopPropagation();
+                if (confirm("Delete this workspace entirely?")) {
+                    this.db.transaction('projects', 'readwrite').objectStore('projects').delete(id).onsuccess = () => {
+                        this.showToast("Project removed."); this.renderAllProjects();
+                    };
+                }
+            }
+            
+            clearAllProjects() {
+                if(confirm("Purge ALL data?")) {
+                    this.db.transaction('projects', 'readwrite').objectStore('projects').clear().onsuccess = () => this.renderAllProjects();
+                }
+            }
+
+            updateSettings(key, val) {
+                this.settings[key] = parseInt(val);
+            }
+
+            // High Compatibility Binary Translation Converter
+            dataURLToBlob(dataUrl) {
+                const parts = dataUrl.split(';base64,');
+                const contentType = parts[0].split(':')[1];
+                const raw = window.atob(parts[1]);
+                const rawLength = raw.length;
+                const uInt8Array = new Uint8Array(rawLength);
+                for (let i = 0; i < rawLength; ++i) {
+                    uInt8Array[i] = raw.charCodeAt(i);
+                }
+                return new Blob([uInt8Array], { type: contentType });
+            }
+
+            triggerDownload() {
+                try {
+                    let mime = "image/png"; 
+                    let quality = this.settings.defaultQuality / 100;
+                    
+                    if (this.activeToolId === 'compress') {
+                        const fEl = document.getElementById('ctrl-compress-format');
+                        const qEl = document.getElementById('ctrl-compress-quality');
+                        if(fEl) mime = fEl.value;
+                        if(qEl) quality = parseInt(qEl.value) / 100;
+                    } else if (this.activeToolId === 'convert') {
+                        const mEl = document.getElementById('ctrl-convert-mime');
+                        if(mEl) mime = mEl.value;
+                    }
+
+                    // Extract exact canvas state buffer synchronously
+                    const currentDataUrl = this.dom.canvas.toDataURL(mime, quality);
+
+                    // Compile directly to object blob stream to bypass mobile base64 transfer string caps
+                    const imgBlob = this.dataURLToBlob(currentDataUrl);
+                    const objectUrl = URL.createObjectURL(imgBlob);
+
+                    // Allocate native link structure inside initial thread macro-task
+                    const a = document.createElement('a'); 
+                    a.href = objectUrl; 
+                    a.download = `${this.projectName}_wyedit.${mime.split('/')[1]}`;
+                    document.body.appendChild(a); 
+                    a.click(); 
+
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(objectUrl);
+                    }, 1000);
+
+                    // ADSTERRA SMARTLINK INTEGRATION PLACEHOLDER
+                    try {
+                        window.open("https://potterynaggingformerly.com/tnjqef2kn?key=cc865efd4f02f229225d0c2358133f19", "_blank");
+                    } catch(adErr) {
+                        console.warn("Pop-up intercept wrapper caught:", adErr);
+                    }
+
+                    // Process Local database save thread independently from user download context
+                    const saveToggle = document.getElementById('toggle-save-project');
+                    if (saveToggle && saveToggle.checked) {
+                        if (this.db && this.sourceImage) {
+                            const project = {
+                                name: this.projectName,
+                                thumbnail: currentDataUrl,
+                                history: [...this.history],
+                                historyIndex: this.historyIndex,
+                                date: new Date().toISOString()
+                            };
+                            if (this.projectStoreId !== null) {
+                                project.id = this.projectStoreId;
+                            }
+
+                            const req = this.db.transaction('projects', 'readwrite').objectStore('projects').put(project);
+                            req.onsuccess = (e) => {
+                                if(this.projectStoreId === null) {
+                                    this.projectStoreId = e.target.result;
+                                }
+                                this.refreshRecentProjects();
+                                this.showToast("Export successful & project auto-saved.", "success");
+                            };
+                        }
+                    } else {
+                        this.showToast("Export initialized successfully.", "success");
+                    }
+
+                } catch(err) {
+                    console.error("Critical Export Error: ", err);
+                    this.showToast("Export failed. Please check file properties.", "error");
+                }
+            }
+
+            showModal(type) {
+                const title = document.getElementById('modal-title'); const body = document.getElementById('modal-body');
+                if (type === 'faqs') {
+                    title.textContent = "How to Use & FAQs";
+                    body.innerHTML = `
+                        <h4 class="font-bold text-brand mt-2">How do I apply changes?</h4>
+                        <p class="text-xs mb-3">Adjust sliders or parameters in the Right Panel to see live previews. Once satisfied, click "Apply Tool Modifications" to permanently push it to your history timeline.</p>
+                        
+                        <h4 class="font-bold text-brand mt-2">How do I save my project?</h4>
+                        <p class="text-xs mb-3">Use the "Store in My Projects" toggle right before you click "Export & Download". This will save the entire history so you can undo/redo it later from the My Projects page.</p>
+                        
+                        <h4 class="font-bold text-brand mt-2">Where do the files go?</h4>
+                        <p class="text-xs mb-3">All processing is 100% offline. Saved projects use your browser's local IndexedDB, meaning files never hit a cloud server.</p>
+                    `;
+                }
+                const b = document.getElementById('modal-backdrop'); b.classList.remove('hidden'); b.classList.add('flex');
+            }
+
+            closeModal() {
+                const b = document.getElementById('modal-backdrop'); b.classList.remove('flex'); b.classList.add('hidden');
+            }
+        }
+        
+        let app; window.addEventListener('DOMContentLoaded', () => app = new WyEditApp());
+    </script>
+</body>
+</html>
