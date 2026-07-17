@@ -15,7 +15,7 @@
   "dir": "ltr",
   "icons": [
     {
-      "src": "icons/icon-192.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
@@ -37,28 +37,4 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    },
-    {
-      "src": "/icon-180.png",
-      "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any"
     }
-  ],
-  "screenshots": [
-    {
-      "src": "screenshots/desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "WyEdit desktop editor"
-    },
-    {
-      "src": "screenshots/mobile.png", 
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "WyEdit mobile editor"
-    }
-  ]
-}
