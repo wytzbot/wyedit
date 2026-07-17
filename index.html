@@ -1078,7 +1078,13 @@
         let app; window.addEventListener('DOMContentLoaded', () => app = new WyEditApp());
     </script>
     <script>
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js') }
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js', { scope: '/' })
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
     </script>
 </body>
 </html>
